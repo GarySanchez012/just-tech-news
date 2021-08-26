@@ -1,11 +1,12 @@
 const router = require("express").Router();
-const { User, Post, Vote } = require("../../models");
+const { User, Post, Vote, Comment } = require("../../models");
 const sequelize = require("../../config/connection");
 
 //get all posts
 router.get("/", (req, res) => {
   console.log("======================");
   Post.findAll({
+    order: [["created_at", "DESC"]],
     //Query configuration1
     attributes: [
       "id",
@@ -19,9 +20,18 @@ router.get("/", (req, res) => {
         "vote_count",
       ],
     ],
-    order: [["created_at", "DESC"]],
     include: [
       {
+        model: Comment,
+        attributes: ["id", "comment_text", "post_id", "user_id", "created_at"],
+        include: {
+          //this is for the comment
+          model: User,
+          attributes: ["username"],
+        },
+      },
+      {
+        //this is for the post
         model: User,
         attributes: ["username"],
       },
@@ -57,6 +67,15 @@ router.get("/:id", (req, res) => {
         model: User,
         attributes: ["username"],
       },
+      {
+        model: Comment,
+        attributes: ["id", "comment_text", "post_id", "user_id", "created_at"],
+        include: {
+          //this is for the comment
+          model: User,
+          attributes: ["username"],
+        },
+      },
     ],
   })
     .then((dbPostData) => {
@@ -87,11 +106,11 @@ router.post("/", (req, res) => {
 });
 
 //PUT /api/posts/upvote
-router.put('/upvote', (req, res) => {
+router.put("/upvote", (req, res) => {
   // custom static method created in models/Post.js
   Post.upvote(req.body, { Vote })
-    .then(updatedPostData => res.json(updatedPostData))
-    .catch(err => {
+    .then((updatedPostData) => res.json(updatedPostData))
+    .catch((err) => {
       console.log(err);
       res.status(400).json(err);
     });
@@ -129,7 +148,7 @@ router.delete("/:id", (req, res) => {
   })
     .then((dbPostData) => {
       if (!dbPostData) {
-        res.status(404).json({ message: "No post foudn with this id" });
+        res.status(404).json({ message: "No post found with this id" });
       }
       res.json(dbPostData);
     })
